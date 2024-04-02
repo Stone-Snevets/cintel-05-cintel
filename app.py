@@ -1,136 +1,75 @@
 # Imports
-import palmerpenguins as pp
-import plotly.express as px
-import seaborn as sns
-from shiny import reactive, render, req
-from shiny.express import input, ui
-from shinywidgets import render_plotly, render_widget
+from datetime import datetime
+from faicons import icon_svg
+from shiny import reactive, render
+from shiny.express import ui
+import random
 
-# Load PalmerPenguins into a Dataframe
-penguins_df = pp.load_penguins()
+# ----- Title ----------------------------------------------------------------------
+ui.page_opts(title='Live Antarctic Temperatures', fillable=True)
 
-# Generate UI
-ui.page_opts(title="Stevens: Penguin Data", fillable=True)
+# ----- Sidebar --------------------------------------------------------------------
+with ui.sidebar(title='Antarctica Temperature',
+                class_='text-center',
+                open='open'):
 
-# Add a sidebar
-with ui.sidebar(open="open"):
-    # Add 2nd level header to sidebar
-    ui.h2("Sidebar")
+    # Provide a description
+    ui.p('Perodically measuring the farenheit temperature in Antarctica')
 
-    # Create Dropdown Input for Attributes
-    ui.input_selectize("field", "Select an Attribute", ['bill_depth_mm', 
-                                                        'flipper_length_mm', 
-                                                        'body_mass_g',  
-                                                        'year'])
-
-    # Create Numeric Input
-    #-> Number of Bins for Plotly Histogram
-    ui.input_numeric("num_bins_plotly", "Select Number of Plotly Bins:", 20)
-
-    # Create Slider
-    #-> Number of Bins for Seaborn Histogram
-    ui.input_slider("num_bins_sns", "Select Number of Seaborn Bins", 10, 100, 20)
-
-    # Create Checkboxes
-    #-> Filter Species
-    ui.input_checkbox_group(
-        "checked_species",
-        "Select Species",
-        ["Adelie", "Chinstrap", "Gentoo"],
-        selected="Adelie",
-        inline=True
-    )
-    #-> Filter Island
-    ui.input_checkbox_group(
-        'checked_island',
-        'Select Island',
-        ['Biscoe', 'Dream', 'Torgersen'],
-        selected='Biscoe',
-        inline=True
-    )
-    #-> Filter Gender
-    ui.input_checkbox_group(
-        'checked_gender',
-        'Select Gender',
-        ['female', 'male'],
-        selected = 'female',
-        inline=True
-    )
-
-    # Add in Horizontal Rule
-    ui.hr()
-
-    # Add in Hyperlink to GitHub Repository
-    ui.a(
-        "GitHub Repository",
-        href="https://github.com/Stone-Snevets/cintel-03-reactive",
-        target="_blank"
-    )
+    # Provide a link to GitHub Repository
+    ui.a('GitHub Repository of Code',
+         href = 'https://github.com/Stone-Snevets/cintel-05-cintel',
+        target = '_blank')
 
 
-# Generate Output Layout having Multiple Columns
-with ui.layout_columns():
+# ----- Main ----------------------------------------------------------------------
+# Add title of the timestamp
+ui.h2('Current Time:')
 
-    # Create Data Table
-    @render.data_frame
-    def penguins_dt():
-        return render.DataTable(filtered_data())
+# Render the timestamp
+@render.text
+def display_timestamp():
 
-    # Create Data Grid
-    @render.data_frame
-    def penguins_dg():
-        return render.DataGrid(filtered_data())
+    # Call 'create_timestamp_and_temp' function
+    # Grab only the timestamp
+    current_timestamp = create_timestamp_and_temp()['time']
+
+    # Return the timestamp
+    return current_timestamp
+
+# Add title of the temperature
+ui.h2('Current Temperature(F):')
+
+# Render the temperature
+@render.text
+def display_temp():
+
+    # Call 'create_timestamp_and_temp' function
+    # Grab only the temperature
+    current_temp_f = create_timestamp_and_temp()['temperature(F)']
+
+    # Return the temperature
+    return current_temp_f
+
+
+# ----- Generate 'random' temperature at intervals --------------------------------
+# Assign our time interval to a constant
+INTERVAL_SEC:int = 1;
+
+# Create a reactive calc function to create a temperature and timestamp
+@reactive.calc()
+def create_timestamp_and_temp():
     
-    # Create Plotly Histogram
-    @render_widget
-    def plotly_histogram():
-        return px.histogram(data_frame = filtered_data(),
-                           x = input.field(),
-                           nbins = input.num_bins_plotly()
-                           )
+    # Generate a interval every 'INTERVAL_SEC' seconds
+    reactive.invalidate_later(INTERVAL_SEC)
 
-    # Create Seaborn Histogram
-    @render.plot(alt = 'Seaborn Histogram of Palmers Penguins')
-    def sns_histogram():
-        return sns.histplot(data = filtered_data(),
-                            x = input.field(),
-                            bins = input.num_bins_sns()
-                           )
+    # Create a timestamp that changes every 'INTERVAL_SEC' seconds
+    #-> Format the output with strftime()
+    time_stamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
+    # Randomly generate a temperature
+    #-> Round it to 2 decimal places
+    temperature_F = round(random.uniform(-18, -16),2)
 
-# Generate a Card for Scatterplot
-with ui.card(full_screen=True):
-    ui.card_header('Plotly Scatterplot: Species')
-    
-    # Create Scatterplot
-    @render_plotly
-    def plotly_scatterplot():
-        return px.scatter(data_frame = filtered_data(),
-                          x = 'year',
-                          y = 'body_mass_g',
-                          color = 'species',
-                          title = 'Penguin Age (yr) vs. Weight (g)',
-                          labels = {'year': 'Year of Birth',
-                                   'body_mass_g': 'Weight (g)'}
-                         )
-
-
-# Add Reactive Calculation
-@reactive.calc
-def filtered_data():
-    # Make sure at least one species is selected
-    req(input.checked_species())
-    # Make sure at least one island is selected
-    req(input.checked_island())
-    # Make sure at least one gender is selected
-    req(input.checked_gender())
-    
-    # Select Species from Penguins Dataframe
-    select_species = penguins_df['species'].isin(input.checked_species())
-    # Select Island from Penguins Dataframe
-    select_island = penguins_df['island'].isin(input.checked_island())
-    # Select Gender from Penguins Dataframe
-    select_gender = penguins_df['sex'].isin(input.checked_gender())
-
-    # Return Filtered Dataframe
-    return penguins_df[select_species & select_island & select_gender]
+    # Return the timestamp and temperature
+    return {'time': time_stamp, 'temperature(F)': temperature_F}
