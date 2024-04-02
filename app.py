@@ -1,6 +1,6 @@
 # Imports
+from collections import deque
 from datetime import datetime
-from faicons import icon_svg
 from shiny import reactive, render
 from shiny.express import ui
 import random
@@ -52,9 +52,15 @@ def display_temp():
     return current_temp_f
 
 
-# ----- Generate 'random' temperature at intervals --------------------------------
+# ----- Generate and store 'random' temperature intervals --------------------------
 # Assign our time interval to a constant
 INTERVAL_SEC:int = 1;
+
+# Assign the number of bins we can hold
+NUM_DEQUE_BINS = 5
+
+# Create the deque
+temperature_deque = reactive.value(deque(maxlen=NUM_DEQUE_BINS))
 
 # Create a reactive calc function to create a temperature and timestamp
 @reactive.calc()
@@ -71,5 +77,8 @@ def create_timestamp_and_temp():
     #-> Round it to 2 decimal places
     temperature_F = round(random.uniform(-18, -16),2)
 
-    # Return the timestamp and temperature
+    # Append the new timestamp and temperature into our deque
+    temperature_deque.get().append({'time': time_stamp, 'temperature(F)': temperature_F})
+
+    # Return the new timestamp and temperature
     return {'time': time_stamp, 'temperature(F)': temperature_F}
