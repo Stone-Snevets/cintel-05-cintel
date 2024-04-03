@@ -2,9 +2,12 @@
 from collections import deque
 from datetime import datetime
 from faicons import icon_svg
+from scipy import stats
 from shiny import reactive, render
 from shiny.express import ui
+from shinywidgets import render_plotly
 import pandas as pd
+import plotly.express as px
 import random
 
 # Define the page layout
@@ -36,7 +39,7 @@ with ui.layout_columns():
             now_dict, now_deque, now_df = get_timestamp_and_temp()
 
             # Grab and return the temp from the dictionary
-            return now_dict['temp']            
+            return f"{now_dict['temp']} F"
         # )
     # )
 
@@ -57,7 +60,72 @@ with ui.layout_columns():
             # Grab and return the timestamp from the dictionary
             return now_dict['timestamp']
         # )
-    # )        
+    # )
+
+    # --- Create a card holding the latest elements of the deque ---------------------------
+    with ui.card(full_screen=True):
+    # (
+        # Create a dategrid of latest deque elements
+        @render.data_frame
+        def deque_data_grid():
+        # (
+            # Call "get_timestamp_and_temp" function
+            now_dict, now_deque, now_df = get_timestamp_and_temp()
+
+            # Grab and return a datagrid of the dataframe
+            return render.DataGrid(now_df, width='100%')
+        # )
+    # )
+
+    # --- Create a card with a plot of the elements ----------------------------------------
+    with ui.card(full_screen=True):
+    # (
+        # Draw a plot of the elements
+        @render_plotly
+        def draw_timestamp_and_temp():
+        # (
+            # Call "get_timestamp_and_temp" function
+            now_dict, now_deque, now_df = get_timestamp_and_temp()
+
+            # Make sure "now_df" is not empty
+            if not now_df.empty:
+            # (
+                # Convert "timestamp" to a dataframe timestamp
+                #-> this is for cleaner graphing
+                now_df['timestamp'] = pd.to_datetime(now_df['timestamp'])
+                
+                # Graph a scatterplot of our findings
+                graph_timestamp_and_temp = px.scatter(now_df,
+                                                      x = 'timestamp',
+                                                      y = 'temp',
+                                                      title = 'Measured Temperature (F) in Antarctica',
+                                                      labels = {'temp':'Temperature (F)', 'timestamp': 'Date and Time'},
+                                                      color_discrete_sequence = ['blue'])
+
+                # Add a Regression Line
+                #-> Set the x values to be a sequence list
+                reg_x = list(range(len(now_df)))
+
+                #-> Set the y values to the temperatures
+                reg_y = now_df['temp']
+
+                #-> Call stats.linregress() to obtain the regression
+                slope, intercept, r_value, p_value, std_err = stats.linregress(reg_x, reg_y)
+
+                #-> Calculate the slope of the line-best-fit
+                now_df['best_fit_line'] = [((slope*x) + intercept) for x in reg_x]
+
+                #-> Add regression line to our scatterplot
+                graph_timestamp_and_temp.add_scatter(x = now_df['timestamp'],
+                                                     y = now_df['best_fit_line'],
+                                                     mode = 'lines',
+                                                     name = 'Regression Line')
+
+                # Return our plot
+                return graph_timestamp_and_temp
+            # )
+        # )
+    # )
 # )
 # --- Generate reactive calc function ------------------------------------------------------
 
