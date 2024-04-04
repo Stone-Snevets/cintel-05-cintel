@@ -11,13 +11,13 @@ import plotly.express as px
 import random
 
 # Define the page layout
-ui.page_opts(title = 'Antarctic Temperature (F) and Timestamp', fillable=True)
+ui.page_opts(title = 'Antarctic Temperature and Timestamp', fillable=True)
 
 # === Sidebar ==============================================================================
-with ui.sidebar(title = 'Antarctic Temperature (F)', class_ = 'text-center', open='open'):
+with ui.sidebar(title = 'Antarctic Temperature', class_ = 'text-center', open='open'):
 
     # Add a description
-    ui.p('Frequently "measuring" the farenheit temperature in Antarctica')
+    ui.p('Frequently "measuring" the temperature in Antarctica')
 
     # Include link to GitHub repo
     ui.a('GitHub Repository for Code', href='https://github.com/Stone-Snevets/cintel-05-cintel')
@@ -28,18 +28,25 @@ with ui.sidebar(title = 'Antarctic Temperature (F)', class_ = 'text-center', ope
 with ui.layout_columns():
 # (
     # --- Create a value box showing the current temperature -------------------------------
-    
+
     with ui.value_box(value = 'Warmer than usual.', showcase = icon_svg('sun'), theme = 'bg-gradient-blue-green'):
     # (
         # Grab the current temp
         @render.text
-        def get_current_temp():
+        def get_current_temp_c():
         # (
             # Call "get_timestamp_and_temp" function
             now_dict, now_deque, now_df = get_timestamp_and_temp()
 
-            # Grab and return the temp from the dictionary
-            return f"{now_dict['temp']} F"
+            # Grab the temperature from the dictionary
+            now_temp_c = now_dict['temp']
+
+            # Convert Celsius to Fahrenheit
+            #-> Round to 2 decimal places
+            now_temp_f = round(((9/5)*now_temp_c)+32, 2)
+
+            # Return both temperatures
+            return f"{now_temp_c} C <-> {now_temp_f} F"
         # )
     # )
 
@@ -151,10 +158,10 @@ def get_timestamp_and_temp():
 
     # Generate a random temperature
     #-> Round the temperature to 2 decimal places
-    current_temp_f = round(random.uniform(-18, -16), 2)
+    current_temp_c = round(random.uniform(-18, -16), 2)
 
     # Create a dictionary of the latest timestamp and temperature
-    current_dict = {'timestamp': current_timestamp, 'temp': current_temp_f}
+    current_dict = {'timestamp': current_timestamp, 'temp': current_temp_c}
 
     # Append the latest timestamp and temperature to our deque
     time_temp_deque.get().append(current_dict)
